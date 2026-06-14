@@ -1,0 +1,6 @@
+{
+  "name": "Instant Video Chat",
+  "description": "A real-time Omegle-style 1-to-1 video, audio, and text chat application with random matching.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
