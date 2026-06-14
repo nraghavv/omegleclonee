@@ -25,6 +25,7 @@ export default function App() {
   
   // Media streams & connection state
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
@@ -51,10 +52,27 @@ export default function App() {
     ]
   };
 
+  // Synchronize local video element with localStream state
+  useEffect(() => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, status]);
+
+  // Synchronize remote video element with remoteStream state
+  useEffect(() => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, status]);
+
   // 1. Initialize socket connection
   useEffect(() => {
     // Establish connection to same site host (extremely safe for proxy environments)
-    const socketInstance = io();
+    const socketInstance = io({
+      transports: ['websocket'],
+      upgrade: false
+    });
     socketRef.current = socketInstance;
     setSocket(socketInstance);
 
@@ -231,8 +249,8 @@ export default function App() {
       // Handle remote media track bindings
       pc.ontrack = (event) => {
         console.log('Received remote track', event.streams);
-        if (remoteVideoRef.current && event.streams && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+        if (event.streams && event.streams[0]) {
+          setRemoteStream(event.streams[0]);
         }
       };
 
@@ -271,7 +289,10 @@ export default function App() {
 
       // Initiator generates RTC Offer
       if (initiator) {
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        });
         await pc.setLocalDescription(offer);
         socketRef.current?.emit('signal', {
           to: partnerSocketId,
@@ -293,6 +314,7 @@ export default function App() {
       pc.close();
       peerConnectionRef.current = null;
     }
+    setRemoteStream(null);
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
